@@ -1,18 +1,19 @@
-# Importação das dependencias
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+import seaborn as sns
 from datetime import datetime, timedelta
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 import warnings
 warnings.filterwarnings('ignore')
 
-class airQualityMonitor:
+class AirQualityMonitor:
     def __init__(self):
+        """Sistema de Monitoramento de Qualidade do Ar com Correlação Meteorológica"""
+        
         # Padrões da EPA para Índice de Qualidade do Ar (AQI)
         self.aqi_breakpoints = {
             'PM2.5': [
@@ -246,7 +247,7 @@ class airQualityMonitor:
         
         return report
     
-    def create_dashboard(self, data, output_file='dashboard.html'):
+    def create_dashboard(self, data, output_file='air_quality_dashboard.html'):
         """Cria dashboard interativo"""
         
         # Calcula AQI se não calculado
@@ -390,8 +391,8 @@ class airQualityMonitor:
                 })
         
         return alerts
-    
-    def main():
+
+def main():
     """Demonstração do sistema de monitoramento"""
     
     print("=== Sistema de Monitoramento de Qualidade do Ar ===\n")
@@ -473,18 +474,15 @@ class airQualityMonitor:
     print(f"O3 médio: {data['O3'].mean():.3f} ppm")
     print(f"NO2 médio: {data['NO2'].mean():.3f} ppm")
     
-    # Cria e mostra gráficos estáticos
-    print("\nGerando gráficos estáticos...")
-    monitor.create_static_plots(data)
-    
-    # Cria e mostra o dashboard interativo
-    print("\nGerando dashboard interativo...")
-    fig = monitor.create_dashboard(data)
-    fig.show()
+    ## Cria e mostra o dashboard interativo
+    #print("\nGerando dashboard interativo...")
+    #fig = monitor.create_dashboard(data)
+    #fig.show()
 
     # Cria e salva o dashboard como HTML
     print("\nGerando dashboard interativo...")
-    monitor.create_dashboard(data, "air_quality_dashboard.html")
+    #monitor.create_dashboard(data, "air_quality_dashboard.html")
+    monitor.create_dashboard(data)
     print("Dashboard salvo como 'air_quality_dashboard.html' - abra no navegador")
     
     return monitor, data, critical_episodes
