@@ -474,6 +474,7 @@ def main():
     print(f"O3 médio: {data['O3'].mean():.3f} ppm")
     print(f"NO2 médio: {data['NO2'].mean():.3f} ppm")
     
+
     ## Cria e mostra o dashboard interativo
     #print("\nGerando dashboard interativo...")
     #fig = monitor.create_dashboard(data)
