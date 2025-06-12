@@ -109,3 +109,80 @@ class airQualityMonitor:
         
         return data
     
+    def calculate_aqi(self, pollutant, concentration):
+        """Calcula o Índice de Qualidade do Ar (AQI) para um poluente"""
+        
+        if pollutant not in self.aqi_breakpoints:
+            return np.nan
+        
+        breakpoints = self.aqi_breakpoints[pollutant]
+        
+        for bp_lo, bp_hi, aqi_lo, aqi_hi in breakpoints:
+            if bp_lo <= concentration <= bp_hi:
+                aqi = ((aqi_hi - aqi_lo) / (bp_hi - bp_lo)) * (concentration - bp_lo) + aqi_lo
+                return round(aqi)
+        
+        return 500  # Acima do limite máximo
+    
+    def get_aqi_category(self, aqi_value):
+        """Retorna a categoria e cor do AQI"""
+        for (min_val, max_val), (category, color) in self.aqi_categories.items():
+            if min_val <= aqi_value <= max_val:
+                return category, color
+        return 'Perigoso', 'maroon'
+    
+    def gaussian_plume_model(self, x, y, z, source_strength, wind_speed, wind_direction, 
+                           stability_class='D', stack_height=10):
+        """
+        Modelo Gaussiano de Dispersão Atmosférica Simplificado
+        
+        Parameters:
+        - x, y, z: coordenadas do receptor
+        - source_strength: taxa de emissão (g/s)
+        - wind_speed: velocidade do vento (m/s)
+        - wind_direction: direção do vento (graus)
+        - stability_class: classe de estabilidade atmosférica (A-F)
+        - stack_height: altura da chaminé (m)
+        """
+        
+        # Parâmetros de dispersão por classe de estabilidade
+        stability_params = {
+            'A': {'a': 0.527, 'b': 0.865, 'c': 0.28, 'd': 0.90},  # Muito instável
+            'B': {'a': 0.371, 'b': 0.866, 'c': 0.23, 'd': 0.85},  # Moderadamente instável
+            'C': {'a': 0.209, 'b': 0.897, 'c': 0.22, 'd': 0.80},  # Levemente instável
+            'D': {'a': 0.128, 'b': 0.905, 'c': 0.20, 'd': 0.76},  # Neutro
+            'E': {'a': 0.098, 'b': 0.902, 'c': 0.15, 'd': 0.73},  # Moderadamente estável
+            'F': {'a': 0.065, 'b': 0.902, 'c': 0.12, 'd': 0.67}   # Muito estável
+        }
+        
+        params = stability_params.get(stability_class, stability_params['D'])
+        
+        # Transformação de coordenadas para sistema de vento
+        wind_rad = np.radians(wind_direction)
+        x_wind = x * np.cos(wind_rad) + y * np.sin(wind_rad)
+        y_wind = -x * np.sin(wind_rad) + y * np.cos(wind_rad)
+        
+        # Evita divisão por zero
+        if x_wind <= 0:
+            return 0
+        
+        # Cálculo dos parâmetros de dispersão
+        sigma_y = params['a'] * x_wind ** params['b']
+        sigma_z = params['c'] * x_wind ** params['d']
+        
+        # Evita valores muito pequenos
+        sigma_y = max(sigma_y, 0.1)
+        sigma_z = max(sigma_z, 0.1)
+        wind_speed = max(wind_speed, 0.5)
+        
+        # Modelo Gaussiano
+        try:
+            term1 = source_strength / (2 * np.pi * wind_speed * sigma_y * sigma_z)
+            term2 = np.exp(-0.5 * (y_wind / sigma_y) ** 2)
+            term3 = np.exp(-0.5 * ((z - stack_height) / sigma_z) ** 2)
+            term4 = np.exp(-0.5 * ((z + stack_height) / sigma_z) ** 2)
+            
+            concentration = term1 * term2 * (term3 + term4)
+            return max(0, concentration)
+        except:
+            return 0
