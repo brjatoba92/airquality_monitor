@@ -347,3 +347,46 @@ class airQualityMonitor:
         fig.write_html(output_file)
         print(f"Dashboard salvo como {output_file}")
         return fig
+    
+    def generate_alerts(self, current_data, forecast_data=None):
+        """Gera alertas automáticos"""
+        
+        alerts = []
+        
+        # Verifica condições atuais
+        current_aqi = current_data['AQI_Overall'].iloc[-1]
+        category, color = self.get_aqi_category(current_aqi)
+        
+        if current_aqi > 100:
+            alerts.append({
+                'type': 'QUALIDADE DO AR',
+                'level': 'ATENÇÃO' if current_aqi <= 150 else 'ALERTA',
+                'message': f"AQI atual: {current_aqi} ({category})",
+                'timestamp': current_data['datetime'].iloc[-1],
+                'action': 'Grupos sensíveis devem evitar atividades ao ar livre'
+            })
+        
+        # Verifica condições meteorológicas favoráveis à poluição
+        current_wind = current_data['wind_speed'].iloc[-1]
+        if current_wind < 2:
+            alerts.append({
+                'type': 'METEOROLÓGICO',
+                'level': 'ATENÇÃO',
+                'message': f"Vento fraco ({current_wind:.1f} m/s) - condições para acúmulo de poluentes",
+                'timestamp': current_data['datetime'].iloc[-1],
+                'action': 'Monitorar evolução da qualidade do ar'
+            })
+        
+        # Verifica inversão térmica
+        if len(current_data) >= 3:
+            temp_gradient = current_data['temperature'].iloc[-1] - current_data['temperature'].iloc[-3]
+            if temp_gradient < -5:  # Resfriamento rápido
+                alerts.append({
+                    'type': 'INVERSÃO TÉRMICA',
+                    'level': 'ATENÇÃO',
+                    'message': "Possível formação de inversão térmica",
+                    'timestamp': current_data['datetime'].iloc[-1],
+                    'action': 'Risco de piora na qualidade do ar'
+                })
+        
+        return alerts
