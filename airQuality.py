@@ -245,3 +245,105 @@ class airQualityMonitor:
             report['recommendations'].append("Níveis elevados de ozônio - evitar exercícios ao ar livre")
         
         return report
+    
+    def create_dashboard(self, data, output_file='dashboard.html'):
+        """Cria dashboard interativo"""
+        
+        # Calcula AQI se não calculado
+        if 'AQI_Overall' not in data.columns:
+            critical_episodes = self.identify_critical_episodes(data)
+        
+        # Cria subplots
+        fig = make_subplots(
+            rows=3, cols=2,
+            subplot_titles=['Séries Temporais de Poluentes', 'AQI ao Longo do Tempo',
+                          'Correlação com Temperatura', 'Correlação com Velocidade do Vento',
+                          'Rosa dos Ventos - Qualidade do Ar', 'Distribuição de Categorias AQI'],
+            specs=[[{"secondary_y": True}, {"type": "scatter"}],
+                   [{"type": "scatter"}, {"type": "scatter"}],
+                   [{"type": "barpolar"}, {"type": "bar"}]],
+            vertical_spacing=0.12
+        )
+        
+        # 1. Séries temporais de poluentes
+        pollutants = ['PM2.5', 'PM10', 'O3', 'NO2']
+        colors = ['red', 'orange', 'blue', 'green']
+        
+        for i, (pollutant, color) in enumerate(zip(pollutants, colors)):
+            fig.add_trace(
+                go.Scatter(x=data['datetime'], y=data[pollutant], 
+                          name=pollutant, line=dict(color=color)),
+                row=1, col=1
+            )
+        
+        # 2. AQI ao longo do tempo
+        fig.add_trace(
+            go.Scatter(x=data['datetime'], y=data['AQI_Overall'], 
+                      name='AQI Geral', line=dict(color='purple', width=3)),
+            row=1, col=2
+        )
+        
+        # 3. Correlação com temperatura
+        fig.add_trace(
+            go.Scatter(x=data['temperature'], y=data['AQI_Overall'], 
+                      mode='markers', name='AQI vs Temperatura',
+                      marker=dict(color=data['AQI_Overall'], 
+                                colorscale='RdYlBu_r', showscale=True)),
+            row=2, col=1
+        )
+        
+        # 4. Correlação com velocidade do vento
+        fig.add_trace(
+            go.Scatter(x=data['wind_speed'], y=data['AQI_Overall'], 
+                      mode='markers', name='AQI vs Vento',
+                      marker=dict(color=data['PM2.5'], 
+                                colorscale='Reds', showscale=False)),
+            row=2, col=2
+        )
+        
+        # 5. Rosa dos ventos com qualidade do ar
+        wind_dirs = np.arange(0, 360, 30)
+        aqi_by_direction = []
+        
+        for direction in wind_dirs:
+            mask = (data['wind_direction'] >= direction - 15) & (data['wind_direction'] < direction + 15)
+            if mask.any():
+                aqi_by_direction.append(data[mask]['AQI_Overall'].mean())
+            else:
+                aqi_by_direction.append(0)
+        
+        fig.add_trace(
+            go.Barpolar(r=aqi_by_direction, theta=wind_dirs, 
+                       name='AQI por Direção do Vento',
+                       marker_color=aqi_by_direction,
+                       marker_colorscale='RdYlBu_r'),
+            row=3, col=1
+        )
+        
+        # 6. Distribuição de categorias AQI
+        categories = []
+        for aqi in data['AQI_Overall']:
+            cat, _ = self.get_aqi_category(aqi)
+            categories.append(cat)
+        
+        cat_counts = pd.Series(categories).value_counts()
+        
+        fig.add_trace(
+            go.Bar(x=cat_counts.index, y=cat_counts.values,
+                  name='Distribuição AQI',
+                  marker_color=['green', 'yellow', 'orange', 'red', 'purple', 'maroon']),
+            row=3, col=2
+        )
+        
+        # Layout
+        fig.update_layout(
+            title_text="Dashboard de Monitoramento de Qualidade do Ar",
+            title_x=0.5,
+            height=1200,
+            showlegend=True
+        )
+
+        # Salva como HTML em vez de mostrar
+        fig.write_html(output_file)
+        print(f"Dashboard salvo como {output_file}")
+        return fig
