@@ -276,20 +276,32 @@ class AirQualityMonitor:
                           name=pollutant, line=dict(color=color)),
                 row=1, col=1
             )
-        
+
         # 2. AQI ao longo do tempo
         fig.add_trace(
             go.Scatter(x=data['datetime'], y=data['AQI_Overall'], 
-                      name='AQI Geral', line=dict(color='purple', width=3)),
+                    name='AQI Geral', line=dict(color='purple', width=3)),
             row=1, col=2
         )
         
         # 3. Correlação com temperatura
         fig.add_trace(
-            go.Scatter(x=data['temperature'], y=data['AQI_Overall'], 
-                      mode='markers', name='AQI vs Temperatura',
-                      marker=dict(color=data['AQI_Overall'], 
-                                colorscale='RdYlBu_r', showscale=True)),
+            go.Scatter(
+                x=data['temperature'],
+                y=data['AQI_Overall'], 
+                mode='markers', 
+                name='AQI vs Temperatura',
+                marker=dict(
+                    color=data['AQI_Overall'], 
+                    colorscale='RdYlBu_r', 
+                    showscale=True,
+                    colorbar=dict(
+                        title='AQI',
+                        x=1.15, #afastar
+                        y=0.55
+                    )
+                )
+            ),
             row=2, col=1
         )
         
@@ -392,100 +404,113 @@ class AirQualityMonitor:
         
         return alerts
 
-def main():
-    """Demonstração do sistema de monitoramento"""
-    
-    print("=== Sistema de Monitoramento de Qualidade do Ar ===\n")
-    
-    # Inicializa o sistema
-    monitor = AirQualityMonitor()
-    
-    # Gera dados de exemplo
-    print("Gerando dados de exemplo...")
-    data = monitor.generate_sample_data(days=7)
-    
-    # Identifica episódios críticos
-    print("Identificando episódios críticos...")
-    critical_episodes = monitor.identify_critical_episodes(data)
-    
-    print(f"Episódios críticos identificados: {len(critical_episodes)}")
-    
-    if len(critical_episodes) > 0:
-        print("\nEpisódios Críticos:")
-        for idx, episode in critical_episodes.head().iterrows():
-            category, _ = monitor.get_aqi_category(episode['AQI_Overall'])
-            print(f"- {episode['datetime'].strftime('%Y-%m-%d %H:%M')}: "
-                  f"AQI {episode['AQI_Overall']:.0f} ({category})")
-    
-    # Gera relatório de saúde
-    print("\nGerando relatório de saúde pública...")
-    health_report = monitor.generate_health_report(data, critical_episodes)
-    
-    print(f"\n=== RELATÓRIO DE SAÚDE PÚBLICA ===")
-    print(f"Período: {health_report['period']}")
-    print(f"AQI Médio: {health_report['avg_aqi']:.1f}")
-    print(f"AQI Máximo: {health_report['max_aqi']:.0f}")
-    print(f"Poluente Dominante: {health_report['dominant_pollutant']}")
-    print(f"Episódios Críticos: {health_report['critical_episodes']}")
-    
-    if health_report['recommendations']:
-        print("\nRecomendações:")
-        for rec in health_report['recommendations']:
-            print(f"- {rec}")
-    
-    # Demonstra modelo de dispersão
-    print(f"\n=== MODELO DE DISPERSÃO GAUSSIANA ===")
-    
-    # Parâmetros exemplo
-    source_strength = 1000  # g/s
-    wind_speed = 3  # m/s
-    wind_direction = 45  # graus
-    
-    # Calcula concentração em pontos de interesse
-    points = [(100, 0, 2), (500, 100, 2), (1000, -200, 2)]
-    
-    print(f"Fonte: {source_strength} g/s, Vento: {wind_speed} m/s, Direção: {wind_direction}°")
-    print("Concentrações calculadas:")
-    
-    for i, (x, y, z) in enumerate(points):
-        conc = monitor.gaussian_plume_model(x, y, z, source_strength, 
-                                          wind_speed, wind_direction)
-        print(f"Ponto {i+1} ({x}, {y}, {z}m): {conc:.2e} g/m³")
-    
-    # Gera alertas
-    print(f"\n=== SISTEMA DE ALERTAS ===")
-    alerts = monitor.generate_alerts(data)
-    
-    if alerts:
-        print("Alertas ativos:")
-        for alert in alerts:
-            print(f"[{alert['level']}] {alert['type']}: {alert['message']}")
-            print(f"  Ação: {alert['action']}")
-    else:
-        print("Nenhum alerta ativo.")
-    
-    # Estatísticas finais
-    print(f"\n=== ESTATÍSTICAS RESUMIDAS ===")
-    print(f"Temperatura média: {data['temperature'].mean():.1f}°C")
-    print(f"Umidade média: {data['humidity'].mean():.1f}%")
-    print(f"Velocidade do vento média: {data['wind_speed'].mean():.1f} m/s")
-    print(f"PM2.5 médio: {data['PM2.5'].mean():.1f} µg/m³")
-    print(f"PM10 médio: {data['PM10'].mean():.1f} µg/m³")
-    print(f"O3 médio: {data['O3'].mean():.3f} ppm")
-    print(f"NO2 médio: {data['NO2'].mean():.3f} ppm")
-    
-    ## Cria e mostra o dashboard interativo
-    #print("\nGerando dashboard interativo...")
-    #fig = monitor.create_dashboard(data)
-    #fig.show()
+import sys
 
-    # Cria e salva o dashboard como HTML
-    print("\nGerando dashboard interativo...")
-    #monitor.create_dashboard(data, "air_quality_dashboard.html")
-    monitor.create_dashboard(data)
-    print("Dashboard salvo como 'air_quality_dashboard.html' - abra no navegador")
-    
-    return monitor, data, critical_episodes
+def main():
+    # Abre um arquivo para escrita que vai capturar toda a saída
+    with open('output_log.txt', 'w', encoding='utf-8') as f:
+        # Redireciona a saída padrão para o arquivo
+        original_stdout = sys.stdout
+        sys.stdout = f
+        
+        try:
+            print("=== Sistema de Monitoramento de Qualidade do Ar ===\n")
+            
+            # Inicializa o sistema
+            monitor = AirQualityMonitor()
+            
+            # Gera dados de exemplo
+            print("Gerando dados de exemplo...")
+            data = monitor.generate_sample_data(days=7)
+            
+            # Identifica episódios críticos
+            print("Identificando episódios críticos...")
+            critical_episodes = monitor.identify_critical_episodes(data)
+
+            print(f"Episódios críticos identificados: {len(critical_episodes)}")
+            
+            if len(critical_episodes) > 0:
+                print("\nEpisódios Críticos:")
+                for idx, episode in critical_episodes.head().iterrows():
+                    category, _ = monitor.get_aqi_category(episode['AQI_Overall'])
+                    print(f"- {episode['datetime'].strftime('%Y-%m-%d %H:%M')}: "
+                        f"AQI {episode['AQI_Overall']:.0f} ({category})")
+            
+            # Gera relatório de saúde
+            print("\nGerando relatório de saúde pública...")
+            health_report = monitor.generate_health_report(data, critical_episodes)
+            
+            print(f"\n=== RELATÓRIO DE SAÚDE PÚBLICA ===")
+            print(f"Período: {health_report['period']}")
+            print(f"AQI Médio: {health_report['avg_aqi']:.1f}")
+            print(f"AQI Máximo: {health_report['max_aqi']:.0f}")
+            print(f"Poluente Dominante: {health_report['dominant_pollutant']}")
+            print(f"Episódios Críticos: {health_report['critical_episodes']}")
+            
+            if health_report['recommendations']:
+                print("\nRecomendações:")
+                for rec in health_report['recommendations']:
+                    print(f"- {rec}")
+            
+            # Demonstra modelo de dispersão
+            print(f"\n=== MODELO DE DISPERSÃO GAUSSIANA ===")
+            
+            # Parâmetros exemplo
+            source_strength = 1000  # g/s
+            wind_speed = 3  # m/s
+            wind_direction = 45  # graus
+            
+            # Calcula concentração em pontos de interesse
+            points = [(100, 0, 2), (500, 100, 2), (1000, -200, 2)]
+            
+            print(f"Fonte: {source_strength} g/s, Vento: {wind_speed} m/s, Direção: {wind_direction}°")
+            print("Concentrações calculadas:")
+            
+            for i, (x, y, z) in enumerate(points):
+                conc = monitor.gaussian_plume_model(x, y, z, source_strength, 
+                                                  wind_speed, wind_direction)
+                print(f"Ponto {i+1} ({x}, {y}, {z}m): {conc:.2e} g/m³")
+            
+            # Gera alertas
+            print(f"\n=== SISTEMA DE ALERTAS ===")
+            alerts = monitor.generate_alerts(data)
+            
+            if alerts:
+                print("Alertas ativos:")
+                for alert in alerts:
+                    print(f"[{alert['level']}] {alert['type']}: {alert['message']}")
+                    print(f"  Ação: {alert['action']}")
+            else:
+                print("Nenhum alerta ativo.")
+            
+            # Estatísticas finais
+            print(f"\n=== ESTATÍSTICAS RESUMIDAS ===")
+            print(f"Temperatura média: {data['temperature'].mean():.1f}°C")
+            print(f"Umidade média: {data['humidity'].mean():.1f}%")
+            print(f"Velocidade do vento média: {data['wind_speed'].mean():.1f} m/s")
+            print(f"PM2.5 médio: {data['PM2.5'].mean():.1f} µg/m³")
+            print(f"PM10 médio: {data['PM10'].mean():.1f} µg/m³")
+            print(f"O3 médio: {data['O3'].mean():.3f} ppm")
+            print(f"NO2 médio: {data['NO2'].mean():.3f} ppm")
+            
+            # Cria e salva o dashboard como HTML
+            print("\nGerando dashboard interativo...")
+            monitor.create_dashboard(data)
+            print("Dashboard salvo como 'air_quality_dashboard.html' - abra no navegador")
+            
+            # Restaura a saída padrão original
+            sys.stdout = original_stdout
+            
+            # Imprime mensagem informando sobre o arquivo de log
+            print("Todos os resultados foram salvos em 'output_log.txt'")
+            
+            return monitor, data, critical_episodes
+            
+        except Exception as e:
+            # Restaura a saída padrão mesmo em caso de erro
+            sys.stdout = original_stdout
+            print(f"Ocorreu um erro: {e}")
+            raise
 
 if __name__ == "__main__":
     try:
