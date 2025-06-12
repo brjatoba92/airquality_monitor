@@ -58,3 +58,54 @@ class airQualityMonitor:
             (201, 300): ('Muito Insalubre', 'purple'),
             (301, 500): ('Perigoso', 'maroon')
         }
+    
+    def generate_sample_data(self, days=30):
+        """Gera dados sintéticos de qualidade do ar e meteorologia"""
+        
+        np.random.seed(42)
+        dates = pd.date_range(start=datetime.now() - timedelta(days=days), 
+                             end=datetime.now(), freq='H')
+        
+        n_points = len(dates)
+        
+        # Dados meteorológicos
+        temperature = 20 + 10 * np.sin(np.arange(n_points) * 2 * np.pi / 24) + np.random.normal(0, 2, n_points)
+        humidity = 60 + 20 * np.sin(np.arange(n_points) * 2 * np.pi / 24 + np.pi) + np.random.normal(0, 5, n_points)
+        wind_speed = np.abs(5 + 3 * np.sin(np.arange(n_points) * 2 * np.pi / 168) + np.random.normal(0, 2, n_points))
+        wind_direction = (180 + 60 * np.sin(np.arange(n_points) * 2 * np.pi / 168)) % 360
+        pressure = 1013 + 10 * np.sin(np.arange(n_points) * 2 * np.pi / 168) + np.random.normal(0, 3, n_points)
+        
+        # Efeito da inversão térmica (pior qualidade do ar com baixa velocidade do vento)
+        inversion_factor = 1 / (wind_speed + 0.5)
+        
+        # Dados de poluentes (correlacionados com condições meteorológicas)
+        pm25 = np.abs(15 + 20 * inversion_factor + np.random.normal(0, 5, n_points))
+        pm10 = pm25 * 1.5 + np.random.normal(0, 10, n_points)
+        
+        # O3 correlacionado com temperatura e radiação solar
+        solar_factor = np.maximum(0, np.sin(np.arange(n_points) * 2 * np.pi / 24))
+        o3 = 0.03 + 0.05 * (temperature / 30) * solar_factor + np.random.normal(0, 0.01, n_points)
+        o3 = np.maximum(0, o3)
+        
+        # NO2 correlacionado com tráfego (picos nas horas de pico)
+        traffic_factor = 1 + 0.5 * (np.sin((np.arange(n_points) % 24 - 8) * np.pi / 6) + 
+                                   np.sin((np.arange(n_points) % 24 - 18) * np.pi / 6))
+        no2 = 0.02 + 0.03 * traffic_factor * inversion_factor + np.random.normal(0, 0.01, n_points)
+        no2 = np.maximum(0, no2)
+        
+        # Criação do DataFrame
+        data = pd.DataFrame({
+            'datetime': dates,
+            'temperature': temperature,
+            'humidity': np.clip(humidity, 0, 100),
+            'wind_speed': wind_speed,
+            'wind_direction': wind_direction,
+            'pressure': pressure,
+            'PM2.5': np.maximum(0, pm25),
+            'PM10': np.maximum(0, pm10),
+            'O3': o3,
+            'NO2': no2
+        })
+        
+        return data
+    
