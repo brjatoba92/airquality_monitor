@@ -186,3 +186,62 @@ class airQualityMonitor:
             return max(0, concentration)
         except:
             return 0
+    
+    def identify_critical_episodes(self, data, threshold_aqi=150):
+        """Identifica episódios críticos de poluição"""
+        
+        # Calcula AQI para todos os poluentes
+        data['AQI_PM2.5'] = data['PM2.5'].apply(lambda x: self.calculate_aqi('PM2.5', x))
+        data['AQI_PM10'] = data['PM10'].apply(lambda x: self.calculate_aqi('PM10', x))
+        data['AQI_O3'] = data['O3'].apply(lambda x: self.calculate_aqi('O3', x))
+        data['AQI_NO2'] = data['NO2'].apply(lambda x: self.calculate_aqi('NO2', x))
+        
+        # AQI geral (máximo entre todos os poluentes)
+        data['AQI_Overall'] = data[['AQI_PM2.5', 'AQI_PM10', 'AQI_O3', 'AQI_NO2']].max(axis=1)
+        
+        # Identifica episódios críticos
+        critical_episodes = data[data['AQI_Overall'] >= threshold_aqi].copy()
+        
+        if len(critical_episodes) > 0:
+            critical_episodes['category'] = critical_episodes['AQI_Overall'].apply(
+                lambda x: self.get_aqi_category(x)[0]
+            )
+        
+        return critical_episodes
+    
+    def generate_health_report(self, data, critical_episodes):
+        """Gera relatório de saúde pública"""
+        
+        report = {
+            'period': f"{data['datetime'].min().strftime('%Y-%m-%d')} a {data['datetime'].max().strftime('%Y-%m-%d')}",
+            'total_hours': len(data),
+            'critical_episodes': len(critical_episodes),
+            'avg_aqi': data['AQI_Overall'].mean(),
+            'max_aqi': data['AQI_Overall'].max(),
+            'dominant_pollutant': '',
+            'recommendations': []
+        }
+        
+        # Identifica poluente dominante
+        aqi_cols = ['AQI_PM2.5', 'AQI_PM10', 'AQI_O3', 'AQI_NO2']
+        max_counts = {}
+        for col in aqi_cols:
+            max_counts[col] = (data[col] == data['AQI_Overall']).sum()
+        
+        report['dominant_pollutant'] = max(max_counts, key=max_counts.get).replace('AQI_', '')
+        
+        # Gera recomendações baseadas nos dados
+        if report['avg_aqi'] > 100:
+            report['recommendations'].append("Grupos sensíveis devem evitar atividades ao ar livre prolongadas")
+        
+        if report['critical_episodes'] > 0:
+            report['recommendations'].append("Foram identificados episódios críticos de poluição")
+            report['recommendations'].append("Recomenda-se uso de máscaras em ambientes externos")
+        
+        if data['PM2.5'].mean() > 35:
+            report['recommendations'].append("Níveis elevados de PM2.5 detectados - risco para doenças respiratórias")
+        
+        if data['O3'].mean() > 0.07:
+            report['recommendations'].append("Níveis elevados de ozônio - evitar exercícios ao ar livre")
+        
+        return report
