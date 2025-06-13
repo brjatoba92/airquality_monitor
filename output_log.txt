@@ -5,16 +5,16 @@ Identificando episódios críticos...
 Episódios críticos identificados: 18
 
 Episódios Críticos:
-- 2025-06-06 00:38: AQI 163 (Insalubre)
-- 2025-06-06 15:38: AQI 500 (Perigoso)
-- 2025-06-07 01:38: AQI 168 (Insalubre)
-- 2025-06-07 23:38: AQI 165 (Insalubre)
-- 2025-06-08 22:38: AQI 500 (Perigoso)
+- 2025-06-06 18:08: AQI 163 (Insalubre)
+- 2025-06-07 09:08: AQI 500 (Perigoso)
+- 2025-06-07 19:08: AQI 168 (Insalubre)
+- 2025-06-08 17:08: AQI 165 (Insalubre)
+- 2025-06-09 16:08: AQI 500 (Perigoso)
 
 Gerando relatório de saúde pública...
 
 === RELATÓRIO DE SAÚDE PÚBLICA ===
-Período: 2025-06-05 a 2025-06-12
+Período: 2025-06-06 a 2025-06-13
 AQI Médio: 102.6
 AQI Máximo: 500
 Poluente Dominante: PM2.5

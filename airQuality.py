@@ -266,16 +266,59 @@ class AirQualityMonitor:
             vertical_spacing=0.12
         )
         
-        # 1. Séries temporais de poluentes
+        # 1. Séries temporais de poluentes com dois eixos y (um para PM2.5/PM10, outro para O3/NO2 em ppb)
         pollutants = ['PM2.5', 'PM10', 'O3', 'NO2']
         colors = ['red', 'orange', 'blue', 'green']
-        
-        for i, (pollutant, color) in enumerate(zip(pollutants, colors)):
-            fig.add_trace(
-                go.Scatter(x=data['datetime'], y=data[pollutant], 
-                          name=pollutant, line=dict(color=color)),
-                row=1, col=1
-            )
+
+        # Ajusta escala para O3 e NO2 (de ppm para ppb)
+        data_plot = data.copy()
+        data_plot['O3_ppb'] = data_plot['O3'] * 1000  # 1 ppm = 1000 ppb
+        data_plot['NO2_ppb'] = data_plot['NO2'] * 1000
+
+        # Adiciona PM2.5 e PM10 ao eixo y primário
+        fig.add_trace(
+            go.Scatter(
+            x=data_plot['datetime'], y=data_plot['PM2.5'],
+            name='PM2.5 (µg/m³)', line=dict(color='red', dash='solid')
+            ),
+            row=1, col=1, secondary_y=False
+        )
+        fig.add_trace(
+            go.Scatter(
+            x=data_plot['datetime'], y=data_plot['PM10'],
+            name='PM10 (µg/m³)', line=dict(color='orange', dash='solid')
+            ),
+            row=1, col=1, secondary_y=False
+        )
+        # Adiciona O3 e NO2 ao eixo y secundário
+        fig.add_trace(
+            go.Scatter(
+            x=data_plot['datetime'], y=data_plot['O3_ppb'],
+            name='O3 (ppb)', line=dict(color='blue', dash='solid')
+            ),
+            row=1, col=1, secondary_y=True
+        )
+        fig.add_trace(
+            go.Scatter(
+            x=data_plot['datetime'], y=data_plot['NO2_ppb'],
+            name='NO2 (ppb)', line=dict(color='green', dash='solid')
+            ),
+            row=1, col=1, secondary_y=True
+        )
+
+        # Configura os títulos e limites dos eixos y
+        fig.update_yaxes(
+            title_text="PM2.5 / PM10 (µg/m³)",
+            #range=[0, 140],
+            #dtick=20,
+            row=1, col=1, secondary_y=False
+        )
+        fig.update_yaxes(
+            title_text="O3 / NO2 (ppb)",
+            #range=[0, 140],
+            #dtick=20,
+            row=1, col=1, secondary_y=True
+        )
 
         # 2. AQI ao longo do tempo
         fig.add_trace(
